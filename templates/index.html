@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DownYT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">&#9660;</span>
+        <span class="logo-text">DownYT</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- URL Input -->
+    <section class="input-section">
+      <p class="input-label">Paste a YouTube video or playlist link</p>
+      <div class="input-row">
+        <input
+          id="url-input"
+          type="text"
+          class="url-input"
+          placeholder="https://www.youtube.com/watch?v=..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="fetch-btn" class="btn-primary">Fetch</button>
+      </div>
+    </section>
+
+    <!-- Error Banner -->
+    <div id="error-banner" class="error-banner" style="display:none">
+      <span id="error-text"></span>
+      <button id="error-dismiss" class="error-dismiss">&times;</button>
+    </div>
+
+    <!-- Preview / Playlist Panel -->
+    <section id="preview-section" class="preview-section"></section>
+
+    <!-- Active Download Queue -->
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Download Queue</h3>
+        <button id="clear-queue-btn" class="btn-clear">Clear All</button>
+      </div>
+      <div id="queue-container" class="queue-container"></div>
+    </section>
+
+    <!-- Downloaded Queue -->
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Downloaded</h3>
+        <button id="clear-downloaded-btn" class="btn-clear">Clear All</button>
+      </div>
+      <div id="downloaded-container" class="queue-container"></div>
+    </section>
+
+  </main>
+
+  <!-- Save Options Modal -->
+  <div id="save-modal" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <h3 class="modal-title">Save options</h3>
+      <div class="modal-field">
+        <label class="modal-label">Save to</label>
+        <div class="modal-input-row">
+          <input id="folder-display" type="text" class="folder-input folder-display" readonly placeholder="downloads">
+          <button id="folder-browse-btn" class="btn-secondary">Browse&hellip;</button>
+        </div>
+      </div>
+      <div id="filename-field" class="modal-field">
+        <label class="modal-label">File name <span class="modal-hint">(extension added automatically)</span></label>
+        <input id="filename-input" type="text" class="folder-input">
+      </div>
+      <div class="modal-actions">
+        <button id="save-cancel-btn" class="btn-ghost">Cancel</button>
+        <button id="save-confirm-btn" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
