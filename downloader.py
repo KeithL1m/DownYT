@@ -1,3 +1,4 @@
+import os
 import yt_dlp
 
 
@@ -95,4 +96,6 @@ def download_video(url: str, format_id: str, output_dir: str, progress_hook, cus
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        return ydl.prepare_filename(info)
+        filename = ydl.prepare_filename(info)
+        base, _ = os.path.splitext(filename)
+        return base + '.mp4'

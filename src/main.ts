@@ -156,10 +156,10 @@ function renderPlaylistPreview(info: PlaylistInfo): void {
       <div class="playlist-footer">
         <select id="playlist-resolution" class="resolution-picker">
           <option value="bestvideo+bestaudio/best">Best quality</option>
-          <option value="137+140">1080p</option>
-          <option value="136+140">720p</option>
-          <option value="135+140">480p</option>
-          <option value="bestaudio">Audio only</option>
+          <option value="bestvideo[height<=1080]+bestaudio/best">1080p</option>
+          <option value="bestvideo[height<=720]+bestaudio/best">720p</option>
+          <option value="bestvideo[height<=480]+bestaudio/best">480p</option>
+          <option value="bestaudio/best">Audio only</option>
         </select>
         <button id="add-playlist-btn" class="btn-primary">Add Selected to Queue</button>
       </div>

@@ -73,8 +73,10 @@ class QueueManager:
             self._semaphore.release()
 
     def _update(self, job_id: str, **kwargs):
+        job_data = None
         with self.lock:
             if job_id in self.jobs:
                 self.jobs[job_id].update(kwargs)
                 job_data = dict(self.jobs[job_id])
-        self.socketio.emit('queue_update', job_data)
+        if job_data is not None:
+            self.socketio.emit('queue_update', job_data)
