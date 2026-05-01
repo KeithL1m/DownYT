@@ -42,6 +42,9 @@ export interface QueueItem {
   format_id: string;
   title: string;
   thumbnail: string;
+  output_dir: string;
+  custom_filename: string | null;
+  download_subtitles: boolean;
   status: QueueStatus;
   progress: number;
   speed: number | null;
@@ -57,4 +60,5 @@ export interface AddToQueuePayload {
   thumbnail: string;
   output_dir: string;
   custom_filename?: string;
+  download_subtitles?: boolean;
 }

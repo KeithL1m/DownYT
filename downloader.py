@@ -80,8 +80,14 @@ def _format_playlist(info: dict) -> dict:
     }
 
 
-def download_video(url: str, format_id: str, output_dir: str, progress_hook, custom_filename: str = None) -> str:
-    if custom_filename:
+def download_video(url: str, format_id: str, output_dir: str, progress_hook, custom_filename: str = None, download_subtitles: bool = False) -> str:
+    if download_subtitles:
+        # Place video + subtitle files in a dedicated subfolder so they stay grouped
+        if custom_filename:
+            outtmpl = f'{output_dir}/{custom_filename}/{custom_filename}.%(ext)s'
+        else:
+            outtmpl = f'{output_dir}/%(title)s/%(title)s.%(ext)s'
+    elif custom_filename:
         outtmpl = f'{output_dir}/{custom_filename}.%(ext)s'
     else:
         outtmpl = f'{output_dir}/%(title)s.%(ext)s'
@@ -94,6 +100,12 @@ def download_video(url: str, format_id: str, output_dir: str, progress_hook, cus
         'no_warnings': True,
         'progress_hooks': [progress_hook],
     }
+    if download_subtitles:
+        ydl_opts.update({
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'subtitlesformat': 'srt',
+        })
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)

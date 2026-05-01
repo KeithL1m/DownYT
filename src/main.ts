@@ -52,21 +52,23 @@ async function handleFetch(): Promise<void> {
 }
 
 // ── Save options modal ────────────────────────────────────────
-interface SaveOptions { folder: string; filename: string; }
+interface SaveOptions { folder: string; filename: string; subtitles: boolean; }
 
 function showSaveModal(defaultTitle: string, showFilename: boolean): Promise<SaveOptions | null> {
   return new Promise((resolve) => {
-    const modal         = document.getElementById('save-modal')       as HTMLElement;
-    const folderDisplay = document.getElementById('folder-display')   as HTMLInputElement;
-    const browseBtn     = document.getElementById('folder-browse-btn') as HTMLButtonElement;
-    const filenameField = document.getElementById('filename-field')   as HTMLElement;
-    const filenameInput = document.getElementById('filename-input')   as HTMLInputElement;
-    const confirmBtn    = document.getElementById('save-confirm-btn') as HTMLButtonElement;
-    const cancelBtn     = document.getElementById('save-cancel-btn')  as HTMLButtonElement;
+    const modal           = document.getElementById('save-modal')        as HTMLElement;
+    const folderDisplay   = document.getElementById('folder-display')    as HTMLInputElement;
+    const browseBtn       = document.getElementById('folder-browse-btn') as HTMLButtonElement;
+    const filenameField   = document.getElementById('filename-field')    as HTMLElement;
+    const filenameInput   = document.getElementById('filename-input')    as HTMLInputElement;
+    const subtitleToggle  = document.getElementById('subtitle-toggle')   as HTMLInputElement;
+    const confirmBtn      = document.getElementById('save-confirm-btn')  as HTMLButtonElement;
+    const cancelBtn       = document.getElementById('save-cancel-btn')   as HTMLButtonElement;
 
     let selectedFolder = 'downloads';
     folderDisplay.value = selectedFolder;
     filenameInput.value = defaultTitle;
+    subtitleToggle.checked = false;
     filenameField.style.display = showFilename ? '' : 'none';
     modal.style.display = 'flex';
 
@@ -97,6 +99,7 @@ function showSaveModal(defaultTitle: string, showFilename: boolean): Promise<Sav
     confirmBtn.onclick = () => close({
       folder: selectedFolder,
       filename: filenameInput.value.trim() || defaultTitle,
+      subtitles: subtitleToggle.checked,
     });
     cancelBtn.onclick = () => close(null);
   });
@@ -123,7 +126,7 @@ function renderVideoPreview(info: VideoInfo): void {
     if (saveOpts === null) return;
 
     try {
-      await addToQueue([{ url: info.webpage_url, format_id: formatId, title: info.title, thumbnail: info.thumbnail, output_dir: saveOpts.folder, custom_filename: saveOpts.filename }]);
+      await addToQueue([{ url: info.webpage_url, format_id: formatId, title: info.title, thumbnail: info.thumbnail, output_dir: saveOpts.folder, custom_filename: saveOpts.filename, download_subtitles: saveOpts.subtitles }]);
       previewSection.innerHTML = '';
       urlInput.value = '';
     } catch (e: unknown) {
@@ -184,7 +187,7 @@ function renderPlaylistPreview(info: PlaylistInfo): void {
     if (saveOpts === null) return;
 
     try {
-      await addToQueue(selected.map(s => ({ ...s, output_dir: saveOpts.folder })));
+      await addToQueue(selected.map(s => ({ ...s, output_dir: saveOpts.folder, download_subtitles: saveOpts.subtitles })));
       previewSection.innerHTML = '';
       urlInput.value = '';
     } catch (e: unknown) {

@@ -1,5 +1,5 @@
 import type { QueueItem } from './types';
-import { openFolder } from './api';
+import { openFolder, addToQueue } from './api';
 
 const activeItems = new Map<string, QueueItem>();
 const completedItems = new Map<string, QueueItem>();
@@ -79,6 +79,14 @@ function createActiveCard(item: QueueItem): HTMLElement {
     item.error ? `<span class="queue-error-msg">${escapeHtml(item.error)}</span>` : '',
   ].filter(Boolean).join('');
 
+  const retryBtn = item.status === 'error' ? `
+    <button class="btn-retry" title="Retry download">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/>
+      </svg>
+      Retry Download
+    </button>` : '';
+
   card.innerHTML = `
     <img class="queue-thumb" src="${item.thumbnail}" alt="">
     <div class="queue-info">
@@ -90,7 +98,28 @@ function createActiveCard(item: QueueItem): HTMLElement {
       <div class="queue-progress-bar">
         <div class="queue-progress-fill" style="width: ${item.progress}%"></div>
       </div>
-    </div>`;
+    </div>
+    ${retryBtn}`;
+
+  if (item.status === 'error') {
+    card.querySelector<HTMLButtonElement>('.btn-retry')!.addEventListener('click', async () => {
+      activeItems.delete(item.id);
+      renderActive();
+      try {
+        await addToQueue([{
+          url: item.url,
+          format_id: item.format_id,
+          title: item.title,
+          thumbnail: item.thumbnail,
+          output_dir: item.output_dir,
+          custom_filename: item.custom_filename ?? undefined,
+          download_subtitles: item.download_subtitles,
+        }]);
+      } catch {
+        // silently ignore — new job will appear via SocketIO regardless
+      }
+    });
+  }
 
   return card;
 }

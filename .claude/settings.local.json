@@ -3,7 +3,8 @@
     "allow": [
       "Bash(taskkill /F /IM python.exe /T)",
       "Bash(taskkill /F /IM py.exe /T)",
-      "Bash(winget install:*)"
+      "Bash(winget install:*)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

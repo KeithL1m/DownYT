@@ -23,6 +23,7 @@ class QueueManager:
             'thumbnail': item.get('thumbnail', ''),
             'output_dir': output_dir,
             'custom_filename': item.get('custom_filename') or None,
+            'download_subtitles': bool(item.get('download_subtitles', False)),
             'status': 'queued',
             'progress': 0,
             'speed': None,
@@ -63,6 +64,7 @@ class QueueManager:
                 output_dir=job['output_dir'],
                 progress_hook=progress_hook,
                 custom_filename=job.get('custom_filename'),
+                download_subtitles=job.get('download_subtitles', False),
             )
             self._update(job_id, status='completed', filename=filename, progress=100)
 

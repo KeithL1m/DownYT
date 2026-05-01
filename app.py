@@ -1,16 +1,31 @@
 import os
+import sys
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 from downloader import fetch_info
 from queue_manager import QueueManager
 
-app = Flask(__name__)
+# When frozen by PyInstaller, resources live in sys._MEIPASS;
+# user-writable data (downloads) lives next to the .exe.
+if getattr(sys, 'frozen', False):
+    _RES_DIR = sys._MEIPASS
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    _RES_DIR = os.path.dirname(os.path.abspath(__file__))
+    _APP_DIR = _RES_DIR
+
+DOWNLOADS_DIR = os.path.join(_APP_DIR, 'downloads')
+os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_RES_DIR, 'templates'),
+    static_folder=os.path.join(_RES_DIR, 'static'),
+)
 app.config['SECRET_KEY'] = 'downyt-secret-key'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 queue_manager = QueueManager(socketio)
-
-os.makedirs('downloads', exist_ok=True)
 
 
 @app.route('/')
@@ -37,6 +52,10 @@ def add_to_queue():
     items = data.get('items', [])
     if not items:
         return jsonify({'error': 'No items provided'}), 400
+    for item in items:
+        d = item.get('output_dir', 'downloads')
+        if not os.path.isabs(d):
+            item['output_dir'] = os.path.join(_APP_DIR, d)
     added = [queue_manager.add(item) for item in items]
     return jsonify({'added': added})
 

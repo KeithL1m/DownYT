@@ -67,6 +67,7 @@ socket.io-client
 5. **Save options modal** — before adding to queue, user picks:
    - **Folder** — "Browse…" button opens the native Windows folder picker (via `tkinter.filedialog`); defaults to `downloads/`
    - **File name** — editable text field pre-filled with the video title; yt-dlp appends the correct extension automatically. Not shown for playlists (each video keeps its own title)
+   - **Download subtitles** — checkbox (unchecked by default); downloads all available subtitle languages as `.srt` files alongside the video
 6. **Download queue** — active downloads shown in a "Download Queue" section with a "Clear All" button
 7. **Background downloading** — `queue_manager.py` runs downloads on background threads so the UI stays responsive
 8. **Progress tracking** — per-item progress (%, download speed, ETA) pushed to the frontend via SocketIO
@@ -75,6 +76,8 @@ socket.io-client
 11. **Downloaded queue** — completed downloads move out of the Download Queue and into a separate "Downloaded" section automatically; has its own "Clear All" button
 12. **Open folder** — each card in the Downloaded section has a folder icon button that opens Windows Explorer at the file's location (calls `/api/open-folder` → `os.startfile`)
 13. **Playlist download** — user pastes a YouTube playlist URL; app fetches all video entries (title + thumbnail) and lists them; user can download the entire playlist at once or deselect individual videos before confirming; all selected videos are bulk-added to the existing download queue
+14. **Subtitle download** — when enabled in the save modal, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
+15. **Retry failed downloads** — error cards in the active queue show a "Retry Download" button (red outline); clicking it removes the failed card and re-queues the same download with identical settings (URL, format, folder, filename, subtitle preference)
 
 ## API Routes
 
@@ -111,7 +114,7 @@ socket.io-client
    - "Select all" toggle at the top-right of the header
    - Scrollable list of video entries with checkbox, thumbnail, and title
    - Resolution picker + "Add Selected to Queue" button in the footer
-6. **Download Queue section** — heading row with "Download Queue" label and "Clear All" button; each item is a card with thumbnail, title, status badge, progress bar, speed/ETA
+6. **Download Queue section** — heading row with "Download Queue" label and "Clear All" button; each item is a card with thumbnail, title, status badge, progress bar, speed/ETA; failed cards show a red-outlined "Retry Download" button on the right
 7. **Downloaded section** — heading row with "Downloaded" label and "Clear All" button; each completed item shows thumbnail, title, file path, full progress bar, and a folder icon button to open the file location in Explorer
 
 ### Save Options Modal
@@ -119,6 +122,7 @@ socket.io-client
 Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Queue" (playlist):
 - **Save to** — read-only path display + "Browse…" button (opens native folder picker); defaults to `downloads`
 - **File name** — editable input pre-filled with video title (single video only; hidden for playlists)
+- **Download subtitles** — checkbox (unchecked by default); label reads "Download subtitles (all available languages, .srt)"
 - **Cancel / Confirm** buttons
 
 ### UI Rules
@@ -139,3 +143,6 @@ Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Que
 - Video format IDs must always be `{format_id}+bestaudio/best` for video formats (set in `_format_video`); audio-only formats use the raw format_id
 - ffmpeg path is hardcoded in `download_video()` via the `ffmpeg_location` yt-dlp option — do not rely on PATH
 - Output format is always mp4 (`merge_output_format: mp4` in yt-dlp options)
+- When `download_subtitles=True`, the `outtmpl` is changed to place files in a subfolder: `{output_dir}/{title}/{title}.%(ext)s`; without subtitles files go directly into `output_dir`
+- `QueueItem` carries `output_dir`, `custom_filename`, and `download_subtitles` so the frontend has everything needed to retry a failed download without re-showing the save modal
+- Retry button style: red outline (`.btn-retry`), error card right side only; on click it removes the failed item from `activeItems` client-side then calls `addToQueue` — the new job arrives via SocketIO like any other
