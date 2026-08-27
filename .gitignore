@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# PyInstaller build output
+/build/
+/dist/
+/DownYT.exe
+
+# Runtime data / logs
+/downloads/*
+*.log
