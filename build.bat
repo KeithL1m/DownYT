@@ -1,10 +1,10 @@
 @echo off
 echo Building DownYT...
-pyinstaller downyt.spec --clean
+pyinstaller downyt.spec --clean --noconfirm
 echo.
-if exist dist\DownYT.exe (
-    echo Build successful! Executable is at dist\DownYT.exe
-) else (
+if %errorlevel% neq 0 (
     echo Build failed. Check output above for errors.
+) else (
+    echo Build successful! Executable is at dist\DownYT.exe
 )
 pause

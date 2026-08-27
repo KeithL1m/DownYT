@@ -1,7 +1,7 @@
 import os
 import uuid
 import threading
-from downloader import download_video
+from downloader import download_video, cleanup_partial_files
 
 
 class QueueManager:
@@ -44,6 +44,7 @@ class QueueManager:
 
     def _run(self, job_id: str):
         self._semaphore.acquire()
+        job = self.jobs[job_id]
         try:
             self._update(job_id, status='downloading')
 
@@ -57,7 +58,6 @@ class QueueManager:
                 elif d['status'] == 'finished':
                     self._update(job_id, progress=100)
 
-            job = self.jobs[job_id]
             filename = download_video(
                 url=job['url'],
                 format_id=job['format_id'],
@@ -70,6 +70,12 @@ class QueueManager:
 
         except Exception as e:
             self._update(job_id, status='error', error=str(e))
+            cleanup_partial_files(
+                output_dir=job['output_dir'],
+                title=job['title'],
+                custom_filename=job.get('custom_filename'),
+                download_subtitles=job.get('download_subtitles', False),
+            )
 
         finally:
             self._semaphore.release()

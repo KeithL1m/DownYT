@@ -1,5 +1,16 @@
+import glob
 import os
+import shutil
 import yt_dlp
+
+_FALLBACK_FFMPEG_LOCATION = r'C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin'
+
+
+def _resolve_ffmpeg_location() -> str:
+    ffmpeg_path = shutil.which('ffmpeg')
+    if ffmpeg_path:
+        return os.path.dirname(ffmpeg_path)
+    return _FALLBACK_FFMPEG_LOCATION
 
 
 def fetch_info(url: str) -> dict:
@@ -95,7 +106,7 @@ def download_video(url: str, format_id: str, output_dir: str, progress_hook, cus
         'format': format_id,
         'outtmpl': outtmpl,
         'merge_output_format': 'mp4',
-        'ffmpeg_location': r'C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin',
+        'ffmpeg_location': _resolve_ffmpeg_location(),
         'quiet': True,
         'no_warnings': True,
         'progress_hooks': [progress_hook],
@@ -111,3 +122,19 @@ def download_video(url: str, format_id: str, output_dir: str, progress_hook, cus
         filename = ydl.prepare_filename(info)
         base, _ = os.path.splitext(filename)
         return base + '.mp4'
+
+
+def cleanup_partial_files(output_dir: str, title: str, custom_filename: str = None, download_subtitles: bool = False) -> None:
+    """Remove yt-dlp's leftover .part/.ytdl fragment files for a failed download."""
+    base_name = custom_filename or title
+    if not base_name:
+        return
+    target_dir = os.path.join(output_dir, base_name) if download_subtitles else output_dir
+    if not os.path.isdir(target_dir):
+        return
+    for pattern in (f'{base_name}.*.part', f'{base_name}.part', f'{base_name}.*.ytdl', f'{base_name}.*.part-Frag*'):
+        for path in glob.glob(os.path.join(target_dir, pattern)):
+            try:
+                os.remove(path)
+            except OSError:
+                pass

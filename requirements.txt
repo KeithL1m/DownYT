@@ -1,3 +1,5 @@
 flask
 flask-socketio
 yt-dlp
+pywebview
+pythonnet
