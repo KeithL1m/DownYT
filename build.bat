@@ -23,6 +23,6 @@ echo.
 if %errorlevel% neq 0 (
     echo Build failed. Check output above for errors.
 ) else (
-    echo Build successful! Executable is at dist\DownYT.exe
+    echo Build successful! Run dist\DownYT\DownYT.exe - copy the whole dist\DownYT folder to install elsewhere.
 )
 pause
