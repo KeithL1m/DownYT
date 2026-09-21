@@ -45,8 +45,20 @@ export async function pickFiles(onlyKind?: 'image'): Promise<{ files: ConvertFil
   return data;
 }
 
-export async function pickFolder(): Promise<string | null> {
-  const res = await fetch('/api/pick-folder', { method: 'POST' });
+export interface DialogOptions {
+  /** Folder the dialog opens in (defaults to the last folder used) */
+  initialDir?: string;
+  title?: string;
+  /** Save As only: extension without the dot (default mp4) */
+  extension?: string;
+}
+
+export async function pickFolder(opts: DialogOptions = {}): Promise<string | null> {
+  const res = await fetch('/api/pick-folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initial_dir: opts.initialDir, title: opts.title }),
+  });
   const data = await res.json();
   return data.cancelled ? null : data.folder;
 }
@@ -69,11 +81,11 @@ export interface SaveChoice {
 }
 
 /** Native Save As dialog: the user picks the folder and edits the file name together. */
-export async function pickSave(defaultName: string): Promise<SaveChoice> {
+export async function pickSave(defaultName: string, opts: DialogOptions = {}): Promise<SaveChoice> {
   const res = await fetch('/api/pick-save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ default_name: defaultName }),
+    body: JSON.stringify({ default_name: defaultName, initial_dir: opts.initialDir, title: opts.title, extension: opts.extension }),
   });
   return res.json();
 }

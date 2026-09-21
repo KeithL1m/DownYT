@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io-client';
-import { pickFiles, pickFolder, addConversions, openFolder } from './api';
+import { pickFiles, pickFolder, pickSave, addConversions, openFolder } from './api';
 import type { ConvertFile, ConvertJob, ConvertOperation } from './types';
 
 // The Convert and Remove Background tabs share one implementation; each tab is a
@@ -8,11 +8,14 @@ interface ToolConfig {
   prefix: string;
   operation: ConvertOperation;
   onlyKind?: 'image';
-  pickFormat: boolean;      // show a per-file output-format picker
-  selectionHint: string;
+  // true: after choosing files, go straight to a native Save As dialog (no options card)
+  saveDialog?: boolean;
+  // Options card (used when saveDialog is false)
+  pickFormat?: boolean;     // show a per-file output-format picker
+  selectionHint?: string;
   emptyActive: string;
   emptyDone: string;
-  startLabel: string;
+  startLabel?: string;
   arrowLabel: (job: ConvertJob) => string;
 }
 
@@ -33,11 +36,9 @@ const CONFIGS: ToolConfig[] = [
     prefix: 'bg',
     operation: 'remove_bg',
     onlyKind: 'image',
-    pickFormat: false,
-    selectionHint: 'Each image is saved as a transparent PNG (name_nobg.png)',
+    saveDialog: true,
     emptyActive: 'No active jobs — choose some images above to get started.',
     emptyDone: 'Images with the background removed will appear here.',
-    startLabel: 'Remove Background',
     arrowLabel: (job) => `${job.title} → background removed`,
   },
 ];
@@ -84,7 +85,8 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
       if (skipped > 0) showError(`${skipped} file${skipped > 1 ? 's' : ''} skipped: unsupported type.`);
       if (files.length > 0) {
         selected = files;
-        renderSelection();
+        if (cfg.saveDialog) await startWithSaveDialog();
+        else renderSelection();
       }
     } catch (e: unknown) {
       showError(e instanceof Error ? e.message : 'Could not open the file picker');
@@ -122,7 +124,7 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
         <div class="playlist-header">
           <div>
             <h2 class="preview-title">${selected.length} file${selected.length > 1 ? 's' : ''} selected</h2>
-            <p class="preview-channel">${cfg.selectionHint}</p>
+            <p class="preview-channel">${cfg.selectionHint ?? ''}</p>
           </div>
         </div>
         <div class="playlist-entries">${rows}</div>
@@ -133,7 +135,7 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
             <button id="${cfg.prefix}-folder-btn" class="btn-secondary">Browse…</button>
             ${outputDir ? `<button id="${cfg.prefix}-folder-reset" class="btn-ghost">Reset</button>` : ''}
           </div>
-          <button id="${cfg.prefix}-start-btn" class="btn-primary">${cfg.startLabel}</button>
+          <button id="${cfg.prefix}-start-btn" class="btn-primary">${cfg.startLabel ?? 'Start'}</button>
         </div>
       </div>`;
 
@@ -156,6 +158,44 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
       renderSelection();
     });
     $('start-btn').addEventListener('click', startJobs);
+  }
+
+  const dirOf = (p: string) => p.substring(0, p.lastIndexOf('\\'));
+  const stemOf = (name: string) => name.replace(/\.[^.]+$/, '');
+
+  // Choose files -> native dialog straight away (same flow as downloading a video):
+  // one image gets a Save As dialog to pick the folder and name, several get a folder picker.
+  // Both open in the original's folder, so "save next to it" is one click.
+  async function startWithSaveDialog(): Promise<void> {
+    const files = selected;
+    selected = [];
+    try {
+      let where: { output_dir: string; output_name?: string };
+      if (files.length === 1) {
+        const choice = await pickSave(`${stemOf(files[0].name)}_nobg`, {
+          initialDir: dirOf(files[0].path),
+          extension: 'png',
+          title: 'Save image without background as',
+        });
+        if (choice.cancelled || !choice.folder) return;
+        where = { output_dir: choice.folder, output_name: choice.filename ?? undefined };
+      } else {
+        const folder = await pickFolder({
+          initialDir: dirOf(files[0].path),
+          title: `Choose a folder for the ${files.length} images`,
+        });
+        if (!folder) return;
+        where = { output_dir: folder };
+      }
+      await addConversions(files.map(f => ({
+        source: f.path,
+        operation: cfg.operation,
+        target_format: 'png',
+        ...where,
+      })));
+    } catch (e: unknown) {
+      showError(e instanceof Error ? e.message : 'Failed to start');
+    }
   }
 
   async function startJobs(): Promise<void> {
@@ -258,6 +298,7 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
           operation: job.operation,
           target_format: job.target_format,
           ...(job.output_dir ? { output_dir: job.output_dir } : {}),
+          ...(job.output_name ? { output_name: job.output_name } : {}),
         }]);
       } catch (e: unknown) {
         showError(e instanceof Error ? e.message : 'Failed to retry');

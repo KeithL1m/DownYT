@@ -59,8 +59,12 @@ def _predict_mask(img: Image.Image) -> Image.Image:
 
 
 def remove_background(source: str, output_dir: Optional[str],
-                      progress_cb: Callable[[int], None]) -> str:
-    """Cut the background out of an image; saves a transparent PNG and returns its path."""
+                      progress_cb: Callable[[int], None], output_name: Optional[str] = None) -> str:
+    """Cut the background out of an image; saves a transparent PNG and returns its path.
+
+    `output_name` (without extension) comes from the Save As dialog; by default the
+    file is saved as `<name>_nobg.png`.
+    """
     if detect_kind(source) != 'image':
         raise ValueError('Background removal only works on image files')
     if not os.path.isfile(source):
@@ -68,8 +72,8 @@ def remove_background(source: str, output_dir: Optional[str],
 
     out_dir = output_dir or os.path.dirname(os.path.abspath(source))
     os.makedirs(out_dir, exist_ok=True)
-    stem = os.path.splitext(os.path.basename(source))[0]
-    output = unique_path(out_dir, f'{stem}_nobg', 'png')
+    stem = output_name or f'{os.path.splitext(os.path.basename(source))[0]}_nobg'
+    output = unique_path(out_dir, stem, 'png')
 
     try:
         progress_cb(5)

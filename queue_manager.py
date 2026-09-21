@@ -113,6 +113,7 @@ class ConvertManager:
             'operation': item.get('operation', 'convert'),
             'target_format': item['target_format'],
             'output_dir': item.get('output_dir') or None,
+            'output_name': item.get('output_name') or None,
             'status': 'queued',
             'progress': 0,
             'filename': None,
@@ -138,7 +139,8 @@ class ConvertManager:
                 self._update(job_id, progress=pct)
 
             if job['operation'] == 'remove_bg':
-                output = remove_background(job['source'], job['output_dir'], progress_cb)
+                output = remove_background(job['source'], job['output_dir'], progress_cb,
+                                           output_name=job['output_name'])
             else:
                 output = convert_file(
                     source=job['source'],

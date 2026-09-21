@@ -79,14 +79,21 @@ def _remember_dir(folder: str) -> None:
         _last_dir = folder
 
 
+def _start_dir(requested) -> str:
+    """Where a dialog should open: the caller's folder if it exists, else the last one used."""
+    return requested if requested and os.path.isdir(requested) else _last_dir
+
+
 @app.route('/api/pick-folder', methods=['POST'])
 def pick_folder():
     import tkinter as tk
     from tkinter import filedialog
+    body = request.get_json(silent=True) or {}
     root = tk.Tk()
     root.withdraw()
     root.wm_attributes('-topmost', 1)
-    folder = filedialog.askdirectory(title='Choose download folder', initialdir=_last_dir)
+    folder = filedialog.askdirectory(title=body.get('title') or 'Choose download folder',
+                                     initialdir=_start_dir(body.get('initial_dir')))
     root.destroy()
     if not folder:
         return jsonify({'cancelled': True, 'folder': None})
@@ -100,10 +107,16 @@ _MEDIA_EXTS = {'.mp4', '.mkv', '.webm', '.m4a', '.mp3', '.opus', '.ogg', '.wav',
 
 @app.route('/api/pick-save', methods=['POST'])
 def pick_save():
-    """Save As dialog: the user picks the folder and edits the file name in one step."""
+    """Save As dialog: the user picks the folder and edits the file name in one step.
+
+    Body: `default_name`, plus optional `initial_dir`, `title` and `extension`
+    (without the dot; defaults to the video download case, mp4).
+    """
     import tkinter as tk
     from tkinter import filedialog
-    default_name = (request.get_json(silent=True) or {}).get('default_name') or 'video'
+    body = request.get_json(silent=True) or {}
+    extension = (body.get('extension') or 'mp4').lower().lstrip('.')
+    default_name = body.get('default_name') or 'video'
     # Windows rejects some characters in file names; yt-dlp would sanitise them anyway
     default_name = _FILENAME_BAD_CHARS.sub('_', default_name).strip(' .')[:150] or 'video'
 
@@ -111,11 +124,11 @@ def pick_save():
     root.withdraw()
     root.wm_attributes('-topmost', 1)
     path = filedialog.asksaveasfilename(
-        title='Save video as',
-        initialdir=_last_dir,
+        title=body.get('title') or 'Save video as',
+        initialdir=_start_dir(body.get('initial_dir')),
         initialfile=default_name,
-        defaultextension='.mp4',
-        filetypes=[('Video', '*.mp4')],
+        defaultextension=f'.{extension}',
+        filetypes=[(extension.upper(), f'*.{extension}')],
         confirmoverwrite=False,
     )
     root.destroy()
@@ -124,8 +137,8 @@ def pick_save():
 
     folder, name = os.path.split(os.path.normpath(path))
     stem, ext = os.path.splitext(name)
-    # yt-dlp appends the real extension itself; only strip one the dialog/user added
-    if ext.lower() in _MEDIA_EXTS:
+    # The caller appends the real extension itself; only strip one the dialog/user added
+    if ext.lower() == f'.{extension}' or ext.lower() in _MEDIA_EXTS:
         name = stem
     _remember_dir(folder)
     return jsonify({'cancelled': False, 'folder': folder, 'filename': name})

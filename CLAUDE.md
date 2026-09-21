@@ -88,7 +88,7 @@ socket.io-client
 14. **Subtitle download** — when the subtitles checkbox is ticked, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
 15. **Retry failed downloads** — error cards in the active queue show a "Retry Download" button (red outline); clicking it removes the failed card and re-queues the same download with identical settings (URL, format, folder, filename, subtitle preference)
 16. **File converter** — the "Convert" tab converts images (png/jpg/webp/bmp/gif/tiff/ico), audio (mp3/wav/flac/m4a/ogg/opus) and video (mp4/mkv/webm/mov/gif, plus audio extraction) with per-file target format, optional output folder (default: next to the original). Progress is pushed on the `convert_update` SocketIO event. Originals are never overwritten (`name (1).ext`), and a failed conversion deletes its partial output
-17. **Background removal** — the "Remove Background" tab cuts the background out of images fully offline and saves a transparent PNG (`name_nobg.png`, next to the original by default). Same queue/progress/retry UI as the converter (jobs share `ConvertManager` with `operation: 'remove_bg'`), with image previews on a checkerboard so transparency is visible
+17. **Background removal** — the "Remove Background" tab cuts the background out of images fully offline and saves a transparent PNG. Choosing files opens a native dialog straight away (no options card), like downloading a video: one image gets a Save As dialog pre-filled with `name_nobg.png` (folder + name in one step), several images get a folder picker and keep the `name_nobg.png` naming. Both dialogs open in the original's folder, and cancelling queues nothing. Same queue/progress/retry UI as the converter (jobs share `ConvertManager` with `operation: 'remove_bg'`), with image previews on a checkerboard so transparency is visible
 
 ## API Routes
 
@@ -98,10 +98,10 @@ socket.io-client
 | POST | `/api/fetch` | Fetch video/playlist metadata via yt-dlp |
 | POST | `/api/queue` | Add one or more items to the download queue |
 | GET | `/api/queue` | Get current queue state |
-| POST | `/api/pick-folder` | Open native Windows folder picker (tkinter); returns `{cancelled, folder}` |
-| POST | `/api/pick-save` | Native Save As dialog; body `{default_name}`; returns `{cancelled, folder, filename}` (filename without extension) |
+| POST | `/api/pick-folder` | Open native Windows folder picker (tkinter); optional body `{initial_dir, title}`; returns `{cancelled, folder}` |
+| POST | `/api/pick-save` | Native Save As dialog; body `{default_name, initial_dir?, title?, extension?}` (extension defaults to mp4); returns `{cancelled, folder, filename}` (filename without extension) |
 | POST | `/api/pick-files` | Native multi-file picker (tkinter); body `{only_kind?: 'image'}`; returns supported files with `kind` + valid output `formats`, and a `skipped` count |
-| POST | `/api/convert` | Queue jobs: `{items: [{source, operation?: 'convert'\|'remove_bg', target_format, output_dir?}]}` (`remove_bg` always outputs png) |
+| POST | `/api/convert` | Queue jobs: `{items: [{source, operation?: 'convert'\|'remove_bg', target_format, output_dir?, output_name?}]}` (`output_name` = file name without extension from the Save As dialog; `remove_bg` always outputs png) |
 | GET | `/api/convert` | Get current job state (conversions and background removals) |
 | GET | `/api/convert/<id>/file?which=source\|output` | Serve a job's own image for on-screen previews (never arbitrary paths) |
 | POST | `/api/open-folder` | Open Windows Explorer at a given file path (os.startfile) |

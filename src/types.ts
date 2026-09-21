@@ -84,6 +84,7 @@ export interface ConvertJob {
   operation: ConvertOperation;
   target_format: string;
   output_dir: string | null;
+  output_name: string | null;
   status: ConvertStatus;
   progress: number;
   filename: string | null;
@@ -95,4 +96,5 @@ export interface AddConversionPayload {
   operation?: ConvertOperation;
   target_format: string;
   output_dir?: string;
+  output_name?: string;
 }
