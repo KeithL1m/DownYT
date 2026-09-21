@@ -4,3 +4,4 @@ yt-dlp
 pywebview
 pythonnet
 pillow
+onnxruntime

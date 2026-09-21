@@ -8,6 +8,15 @@ if not exist vendor\ffmpeg\ffmpeg.exe (
         exit /b 1
     )
 )
+if not exist vendor\models\u2net.onnx (
+    echo Background removal model not found, downloading...
+    powershell -NoProfile -ExecutionPolicy Bypass -File setup_models.ps1
+    if errorlevel 1 (
+        echo Could not download the model. Put u2net.onnx in vendor\models manually.
+        pause
+        exit /b 1
+    )
+)
 echo Building DownYT...
 pyinstaller downyt.spec --clean --noconfirm
 echo.

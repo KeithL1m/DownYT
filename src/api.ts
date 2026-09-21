@@ -34,8 +34,12 @@ export async function addToQueue(items: AddToQueuePayload[]): Promise<{ added: s
   return data as { added: string[] };
 }
 
-export async function pickFiles(): Promise<{ files: ConvertFile[]; skipped: number }> {
-  const res = await fetch('/api/pick-files', { method: 'POST' });
+export async function pickFiles(onlyKind?: 'image'): Promise<{ files: ConvertFile[]; skipped: number }> {
+  const res = await fetch('/api/pick-files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ only_kind: onlyKind ?? null }),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to open file picker');
   return data;

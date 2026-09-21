@@ -71,13 +71,21 @@ def inspect_file(path: str) -> Optional[dict]:
 
 
 def unique_path(directory: str, stem: str, ext: str) -> str:
-    """Return a path that doesn't exist yet, so a conversion never overwrites a file."""
-    candidate = os.path.join(directory, f'{stem}.{ext}')
-    n = 1
-    while os.path.exists(candidate):
-        candidate = os.path.join(directory, f'{stem} ({n}).{ext}')
-        n += 1
-    return candidate
+    """Reserve a path that didn't exist, so a conversion never overwrites a file.
+
+    The name is claimed by atomically creating an empty file ('x' mode), so two
+    jobs running at once for the same source can't pick the same name. The caller
+    overwrites the placeholder and removes it if the job fails.
+    """
+    n = 0
+    while True:
+        name = f'{stem}.{ext}' if n == 0 else f'{stem} ({n}).{ext}'
+        candidate = os.path.join(directory, name)
+        try:
+            with open(candidate, 'xb'):
+                return candidate
+        except FileExistsError:
+            n += 1
 
 
 def convert_file(source: str, target_format: str, output_dir: Optional[str],

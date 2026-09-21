@@ -726,3 +726,18 @@ body {
 
 .badge-converting { background: #332b00; color: var(--warning); }
 .queue-card.status-converting { border-color: #3b3b00; }
+
+/* Image previews on a checkerboard so transparency is visible */
+.file-preview {
+  width: 41px;
+  height: 41px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background-color: #2a2a2a;
+  background-image:
+    linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%),
+    linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 5px 5px;
+}

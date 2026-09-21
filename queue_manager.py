@@ -3,6 +3,7 @@ import uuid
 import threading
 from downloader import download_video, cleanup_partial_files
 from converter import convert_file, detect_kind
+from background import remove_background
 
 
 class QueueManager:
@@ -92,7 +93,8 @@ class QueueManager:
 
 
 class ConvertManager:
-    """Runs file conversions on background threads, mirroring QueueManager."""
+    """Runs file conversions and background removals on background threads,
+    mirroring QueueManager. `operation` is 'convert' or 'remove_bg'."""
 
     def __init__(self, socketio):
         self.socketio = socketio
@@ -108,6 +110,7 @@ class ConvertManager:
             'source': source,
             'title': os.path.basename(source),
             'kind': detect_kind(source),
+            'operation': item.get('operation', 'convert'),
             'target_format': item['target_format'],
             'output_dir': item.get('output_dir') or None,
             'status': 'queued',
@@ -131,12 +134,18 @@ class ConvertManager:
         job = self.jobs[job_id]
         try:
             self._update(job_id, status='converting')
-            output = convert_file(
-                source=job['source'],
-                target_format=job['target_format'],
-                output_dir=job['output_dir'],
-                progress_cb=lambda pct: self._update(job_id, progress=pct),
-            )
+            def progress_cb(pct):
+                self._update(job_id, progress=pct)
+
+            if job['operation'] == 'remove_bg':
+                output = remove_background(job['source'], job['output_dir'], progress_cb)
+            else:
+                output = convert_file(
+                    source=job['source'],
+                    target_format=job['target_format'],
+                    output_dir=job['output_dir'],
+                    progress_cb=progress_cb,
+                )
             self._update(job_id, status='completed', filename=output, progress=100)
         except Exception as e:
             self._update(job_id, status='error', error=str(e))

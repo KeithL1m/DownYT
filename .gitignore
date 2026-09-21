@@ -10,6 +10,7 @@ node_modules/
 /dist/
 /DownYT.exe
 /vendor/ffmpeg/*.exe
+/vendor/models/
 
 # Runtime data / logs
 /downloads/*

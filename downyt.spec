@@ -10,6 +10,11 @@ if not os.path.isfile(_ffmpeg):
 if not _ffmpeg:
     raise SystemExit('ffmpeg.exe not found: put it in vendor/ffmpeg/ or on PATH before building.')
 
+# Bundle the background-removal model (offline use). setup_models.ps1 fetches it.
+_model = os.path.join('vendor', 'models', 'u2net.onnx')
+if not os.path.isfile(_model):
+    raise SystemExit('u2net.onnx not found: run setup_models.ps1 before building.')
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -18,6 +23,7 @@ a = Analysis(
         ('templates', 'templates'),
         ('static', 'static'),
         (_ffmpeg, 'ffmpeg'),
+        (_model, 'models'),
     ],
     hiddenimports=[
         'engineio.async_drivers.threading',
@@ -27,6 +33,7 @@ a = Analysis(
         'webview',
         'webview.platforms.winforms',
         'clr',
+        'onnxruntime',
     ],
     hookspath=[],
     hooksconfig={},

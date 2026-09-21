@@ -20,6 +20,7 @@
       <nav class="nav">
         <button class="nav-tab active" data-view="download">Download</button>
         <button class="nav-tab" data-view="convert">Convert</button>
+        <button class="nav-tab" data-view="bg">Remove Background</button>
       </nav>
     </div>
   </header>
@@ -98,6 +99,35 @@
         <button id="convert-clear-done" class="btn-clear">Clear All</button>
       </div>
       <div id="convert-done" class="queue-container"></div>
+    </section>
+
+  </div>
+
+  <div id="view-bg" class="view" style="display:none">
+
+    <section class="input-section">
+      <p class="input-label">Remove the background from images — runs fully offline on your PC</p>
+      <div class="input-row">
+        <button id="bg-choose-btn" class="btn-primary">Choose files…</button>
+      </div>
+    </section>
+
+    <section id="bg-selection" class="preview-section"></section>
+
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Processing Queue</h3>
+        <button id="bg-clear-active" class="btn-clear">Clear All</button>
+      </div>
+      <div id="bg-active" class="queue-container"></div>
+    </section>
+
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Background Removed</h3>
+        <button id="bg-clear-done" class="btn-clear">Clear All</button>
+      </div>
+      <div id="bg-done" class="queue-container"></div>
     </section>
 
   </div>

@@ -72,6 +72,8 @@ export interface ConvertFile {
   formats: string[];
 }
 
+export type ConvertOperation = 'convert' | 'remove_bg';
+
 export type ConvertStatus = 'queued' | 'converting' | 'completed' | 'error';
 
 export interface ConvertJob {
@@ -79,6 +81,7 @@ export interface ConvertJob {
   source: string;
   title: string;
   kind: ConvertKind;
+  operation: ConvertOperation;
   target_format: string;
   output_dir: string | null;
   status: ConvertStatus;
@@ -89,6 +92,7 @@ export interface ConvertJob {
 
 export interface AddConversionPayload {
   source: string;
+  operation?: ConvertOperation;
   target_format: string;
   output_dir?: string;
 }

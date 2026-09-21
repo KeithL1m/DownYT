@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO
 from downloader import fetch_info
 from queue_manager import QueueManager, ConvertManager
@@ -85,6 +85,7 @@ def pick_folder():
 def pick_files():
     import tkinter as tk
     from tkinter import filedialog
+    only_kind = (request.get_json(silent=True) or {}).get('only_kind')
     root = tk.Tk()
     root.withdraw()
     root.wm_attributes('-topmost', 1)
@@ -92,17 +93,22 @@ def pick_files():
     def patterns(exts):
         return ' '.join(f'*{e}' for e in sorted(exts))
 
-    paths = filedialog.askopenfilenames(
-        title='Choose files to convert',
-        filetypes=[
+    if only_kind == 'image':
+        title = 'Choose images'
+        filetypes = [('Images', patterns(IMAGE_EXTS))]
+    else:
+        title = 'Choose files to convert'
+        filetypes = [
             ('Supported files', patterns(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)),
             ('Images', patterns(IMAGE_EXTS)),
             ('Audio', patterns(AUDIO_EXTS)),
             ('Video', patterns(VIDEO_EXTS)),
-        ],
-    )
+        ]
+    paths = filedialog.askopenfilenames(title=title, filetypes=filetypes)
     root.destroy()
     files = [inspect_file(os.path.normpath(p)) for p in paths]
+    if only_kind:
+        files = [f if f and f['kind'] == only_kind else None for f in files]
     return jsonify({
         'files': [f for f in files if f],
         'skipped': sum(1 for f in files if f is None),
@@ -116,6 +122,8 @@ def add_conversions():
     if not items:
         return jsonify({'error': 'No files provided'}), 400
     for item in items:
+        if item.get('operation') == 'remove_bg':
+            item['target_format'] = 'png'
         if not item.get('source') or not item.get('target_format'):
             return jsonify({'error': 'Each item needs a source file and target format'}), 400
     added = [convert_manager.add(item) for item in items]
@@ -125,6 +133,17 @@ def add_conversions():
 @app.route('/api/convert', methods=['GET'])
 def get_conversions():
     return jsonify(convert_manager.get_all())
+
+
+@app.route('/api/convert/<job_id>/file')
+def convert_job_file(job_id):
+    # Serve only a job's own source/output image (for on-screen previews), never arbitrary paths
+    job = next((j for j in convert_manager.get_all() if j['id'] == job_id), None)
+    which = 'filename' if request.args.get('which') == 'output' else 'source'
+    path = job and job.get(which)
+    if not path or job['kind'] != 'image' or not os.path.isfile(path):
+        return jsonify({'error': 'Not found'}), 404
+    return send_file(path)
 
 
 @app.route('/api/open-folder', methods=['POST'])

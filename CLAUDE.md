@@ -14,6 +14,7 @@ DownYT — a YouTube downloader web app. Users paste a YouTube link, see the vid
 - **Real-time updates:** Flask-SocketIO (backend) + socket.io-client (frontend TypeScript package)
 - **Build tool:** Vite — compiles `src/*.ts` → `static/js/`, no framework required
 - **File conversion:** Pillow (images) + the bundled ffmpeg (audio/video) via `converter.py`
+- **Background removal:** `background.py` runs rembg's `u2net` model directly through `onnxruntime` (same output as rembg, verified pixel-for-pixel) — deliberately NOT the `rembg` package, whose scipy/scikit-image/numba/opencv dependencies would add ~360 MB for optional alpha matting. The model (`vendor/models/u2net.onnx`, ~176 MB, gitignored) is bundled into the build (`_internal/models/`) so it works offline; `setup_models.ps1` downloads it and `build.bat` runs that automatically when missing
 - **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Bundled into the PyInstaller build (`_internal/ffmpeg/`) so the app runs on PCs without ffmpeg; `downyt.spec` copies it from `vendor/ffmpeg/ffmpeg.exe` if present, else from PATH, and fails the build if neither exists. The binary is gitignored; `build.bat` runs `setup_ffmpeg.ps1` to download the latest gyan.dev build into `vendor/ffmpeg/` when it's missing (run it manually on a fresh clone before running from source)
 
 ## File Structure
@@ -29,12 +30,13 @@ DownYT/
 ├── downloader.py             # yt-dlp wrapper: fetch_info(), start_download()
 ├── queue_manager.py          # QueueManager (downloads) + ConvertManager (conversions) — threading, status tracking per item
 ├── converter.py              # File converter: format tables, Pillow image path, ffmpeg audio/video path with progress
+├── background.py             # Background removal: u2net via onnxruntime -> transparent PNG
 ├── main.py                   # Desktop entry point (pywebview window around the Flask server)
-├── downyt.spec / build.bat   # PyInstaller onedir build; setup_ffmpeg.ps1 fetches ffmpeg into vendor/ffmpeg/
+├── downyt.spec / build.bat   # PyInstaller onedir build; setup_ffmpeg.ps1 / setup_models.ps1 fetch ffmpeg and the model into vendor/
 ├── src/
 │   ├── main.ts               # Frontend entry point
 │   ├── queue.ts              # Queue UI logic and SocketIO event handling
-│   ├── convert.ts            # Convert tab: file selection, format pickers, conversion queue UI
+│   ├── convert.ts            # Convert + Remove Background tabs (one shared, config-driven tool view): file selection, queue UI
 │   ├── types.ts              # Shared TypeScript interfaces (VideoInfo, QueueItem, etc.)
 │   └── api.ts                # fetch() wrappers for Flask API routes
 ├── static/
@@ -57,6 +59,7 @@ yt-dlp
 pywebview
 pythonnet
 pillow
+onnxruntime
 ```
 
 **package.json (Node)**
@@ -87,6 +90,7 @@ socket.io-client
 14. **Subtitle download** — when enabled in the save modal, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
 15. **Retry failed downloads** — error cards in the active queue show a "Retry Download" button (red outline); clicking it removes the failed card and re-queues the same download with identical settings (URL, format, folder, filename, subtitle preference)
 16. **File converter** — the "Convert" tab converts images (png/jpg/webp/bmp/gif/tiff/ico), audio (mp3/wav/flac/m4a/ogg/opus) and video (mp4/mkv/webm/mov/gif, plus audio extraction) with per-file target format, optional output folder (default: next to the original). Progress is pushed on the `convert_update` SocketIO event. Originals are never overwritten (`name (1).ext`), and a failed conversion deletes its partial output
+17. **Background removal** — the "Remove Background" tab cuts the background out of images fully offline and saves a transparent PNG (`name_nobg.png`, next to the original by default). Same queue/progress/retry UI as the converter (jobs share `ConvertManager` with `operation: 'remove_bg'`), with image previews on a checkerboard so transparency is visible
 
 ## API Routes
 
@@ -97,9 +101,10 @@ socket.io-client
 | POST | `/api/queue` | Add one or more items to the download queue |
 | GET | `/api/queue` | Get current queue state |
 | POST | `/api/pick-folder` | Open native Windows folder picker (tkinter); returns `{cancelled, folder}` |
-| POST | `/api/pick-files` | Native multi-file picker (tkinter); returns supported files with `kind` + valid output `formats`, and a `skipped` count |
-| POST | `/api/convert` | Queue conversions: `{items: [{source, target_format, output_dir?}]}` |
-| GET | `/api/convert` | Get current conversion state |
+| POST | `/api/pick-files` | Native multi-file picker (tkinter); body `{only_kind?: 'image'}`; returns supported files with `kind` + valid output `formats`, and a `skipped` count |
+| POST | `/api/convert` | Queue jobs: `{items: [{source, operation?: 'convert'\|'remove_bg', target_format, output_dir?}]}` (`remove_bg` always outputs png) |
+| GET | `/api/convert` | Get current job state (conversions and background removals) |
+| GET | `/api/convert/<id>/file?which=source\|output` | Serve a job's own image for on-screen previews (never arbitrary paths) |
 | POST | `/api/open-folder` | Open Windows Explorer at a given file path (os.startfile) |
 
 ## UI Layout & Design
@@ -161,3 +166,5 @@ Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Que
 - Retry button style: red outline (`.btn-retry`), error card right side only; on click it removes the failed item from `activeItems` client-side then calls `addToQueue` — the new job arrives via SocketIO like any other
 - Conversions live in `converter.py` (pure functions) and `ConvertManager`; ffmpeg progress comes from `-progress pipe:1` plus the duration parsed from `ffmpeg -i`, so `ffprobe` is not needed. Run ffmpeg with `stdin=DEVNULL` and `CREATE_NO_WINDOW` (windowed app)
 - Building the frontend needs Node (`npm run build`) — `static/js/main.js` is committed build output, so rebuild it after any `src/*.ts` change
+- Output filenames for conversions/cutouts are reserved atomically (`unique_path` creates the file with mode `x`), because jobs run concurrently; failed jobs delete the reserved file
+- Requirements for a full build: Python deps, Node (frontend), plus `vendor/ffmpeg/ffmpeg.exe` and `vendor/models/u2net.onnx` (both auto-downloaded by `build.bat`)
