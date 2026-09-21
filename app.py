@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO
@@ -67,6 +68,17 @@ def get_queue():
     return jsonify(queue_manager.get_all())
 
 
+# Remembered for this session only (nothing is persisted), so repeat downloads
+# reopen the dialogs where the last one ended.
+_last_dir = DOWNLOADS_DIR
+
+
+def _remember_dir(folder: str) -> None:
+    global _last_dir
+    if folder and os.path.isdir(folder):
+        _last_dir = folder
+
+
 @app.route('/api/pick-folder', methods=['POST'])
 def pick_folder():
     import tkinter as tk
@@ -74,11 +86,49 @@ def pick_folder():
     root = tk.Tk()
     root.withdraw()
     root.wm_attributes('-topmost', 1)
-    folder = filedialog.askdirectory(title='Choose download folder')
+    folder = filedialog.askdirectory(title='Choose download folder', initialdir=_last_dir)
     root.destroy()
     if not folder:
         return jsonify({'cancelled': True, 'folder': None})
+    _remember_dir(folder)
     return jsonify({'cancelled': False, 'folder': folder})
+
+
+_FILENAME_BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_MEDIA_EXTS = {'.mp4', '.mkv', '.webm', '.m4a', '.mp3', '.opus', '.ogg', '.wav', '.flac'}
+
+
+@app.route('/api/pick-save', methods=['POST'])
+def pick_save():
+    """Save As dialog: the user picks the folder and edits the file name in one step."""
+    import tkinter as tk
+    from tkinter import filedialog
+    default_name = (request.get_json(silent=True) or {}).get('default_name') or 'video'
+    # Windows rejects some characters in file names; yt-dlp would sanitise them anyway
+    default_name = _FILENAME_BAD_CHARS.sub('_', default_name).strip(' .')[:150] or 'video'
+
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+    path = filedialog.asksaveasfilename(
+        title='Save video as',
+        initialdir=_last_dir,
+        initialfile=default_name,
+        defaultextension='.mp4',
+        filetypes=[('Video', '*.mp4')],
+        confirmoverwrite=False,
+    )
+    root.destroy()
+    if not path:
+        return jsonify({'cancelled': True, 'folder': None, 'filename': None})
+
+    folder, name = os.path.split(os.path.normpath(path))
+    stem, ext = os.path.splitext(name)
+    # yt-dlp appends the real extension itself; only strip one the dialog/user added
+    if ext.lower() in _MEDIA_EXTS:
+        name = stem
+    _remember_dir(folder)
+    return jsonify({'cancelled': False, 'folder': folder, 'filename': name})
 
 
 @app.route('/api/pick-files', methods=['POST'])

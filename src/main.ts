@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { fetchVideoInfo, addToQueue } from './api';
+import { fetchVideoInfo, addToQueue, pickSave, pickFolder } from './api';
 import { initQueue, updateQueueItem, clearActive, clearDownloaded } from './queue';
 import { initConvert } from './convert';
 import type { VideoInfo, PlaylistInfo, QueueItem } from './types';
@@ -64,60 +64,6 @@ async function handleFetch(): Promise<void> {
   }
 }
 
-// ── Save options modal ────────────────────────────────────────
-interface SaveOptions { folder: string; filename: string; subtitles: boolean; }
-
-function showSaveModal(defaultTitle: string, showFilename: boolean): Promise<SaveOptions | null> {
-  return new Promise((resolve) => {
-    const modal           = document.getElementById('save-modal')        as HTMLElement;
-    const folderDisplay   = document.getElementById('folder-display')    as HTMLInputElement;
-    const browseBtn       = document.getElementById('folder-browse-btn') as HTMLButtonElement;
-    const filenameField   = document.getElementById('filename-field')    as HTMLElement;
-    const filenameInput   = document.getElementById('filename-input')    as HTMLInputElement;
-    const subtitleToggle  = document.getElementById('subtitle-toggle')   as HTMLInputElement;
-    const confirmBtn      = document.getElementById('save-confirm-btn')  as HTMLButtonElement;
-    const cancelBtn       = document.getElementById('save-cancel-btn')   as HTMLButtonElement;
-
-    let selectedFolder = 'downloads';
-    folderDisplay.value = selectedFolder;
-    filenameInput.value = defaultTitle;
-    subtitleToggle.checked = false;
-    filenameField.style.display = showFilename ? '' : 'none';
-    modal.style.display = 'flex';
-
-    browseBtn.onclick = async () => {
-      browseBtn.disabled = true;
-      browseBtn.textContent = 'Opening…';
-      try {
-        const res = await fetch('/api/pick-folder', { method: 'POST' });
-        const data = await res.json();
-        if (!data.cancelled && data.folder) {
-          selectedFolder = data.folder;
-          folderDisplay.value = selectedFolder;
-        }
-      } catch { /* ignore */ } finally {
-        browseBtn.disabled = false;
-        browseBtn.textContent = 'Browse\u2026';
-      }
-    };
-
-    const close = (result: SaveOptions | null) => {
-      modal.style.display = 'none';
-      browseBtn.onclick  = null;
-      confirmBtn.onclick = null;
-      cancelBtn.onclick  = null;
-      resolve(result);
-    };
-
-    confirmBtn.onclick = () => close({
-      folder: selectedFolder,
-      filename: filenameInput.value.trim() || defaultTitle,
-      subtitles: subtitleToggle.checked,
-    });
-    cancelBtn.onclick = () => close(null);
-  });
-}
-
 // ── Video preview ─────────────────────────────────────────────
 function renderVideoPreview(info: VideoInfo): void {
   previewSection.innerHTML = `
@@ -129,17 +75,35 @@ function renderVideoPreview(info: VideoInfo): void {
         <select id="resolution-picker" class="resolution-picker">
           ${info.formats.map(f => `<option value="${f.format_id}">${f.label} (.${f.ext})</option>`).join('')}
         </select>
+        <label class="option-label">
+          <input id="subtitle-toggle" type="checkbox" class="subtitle-checkbox">
+          Download subtitles
+          <span class="hint">(all languages, .srt)</span>
+        </label>
         <button id="add-queue-btn" class="btn-primary">Add to Queue</button>
       </div>
     </div>`;
 
-  document.getElementById('add-queue-btn')!.addEventListener('click', async () => {
-    const formatId = (document.getElementById('resolution-picker') as HTMLSelectElement).value;
-    const saveOpts = await showSaveModal(info.title, true);
-    if (saveOpts === null) return;
+  const addBtn = document.getElementById('add-queue-btn') as HTMLButtonElement;
+  addBtn.addEventListener('click', async () => {
+    const formatId  = (document.getElementById('resolution-picker') as HTMLSelectElement).value;
+    const subtitles = (document.getElementById('subtitle-toggle') as HTMLInputElement).checked;
+
+    // The Save As dialog picks the folder and the file name in one step
+    addBtn.disabled = true;
+    let choice;
+    try {
+      choice = await pickSave(info.title);
+    } catch {
+      setError('Could not open the save dialog');
+      return;
+    } finally {
+      addBtn.disabled = false;
+    }
+    if (choice.cancelled || !choice.folder) return;
 
     try {
-      await addToQueue([{ url: info.webpage_url, format_id: formatId, title: info.title, thumbnail: info.thumbnail, output_dir: saveOpts.folder, custom_filename: saveOpts.filename, download_subtitles: saveOpts.subtitles }]);
+      await addToQueue([{ url: info.webpage_url, format_id: formatId, title: info.title, thumbnail: info.thumbnail, output_dir: choice.folder, custom_filename: choice.filename || undefined, download_subtitles: subtitles }]);
       previewSection.innerHTML = '';
       urlInput.value = '';
     } catch (e: unknown) {
@@ -177,6 +141,10 @@ function renderPlaylistPreview(info: PlaylistInfo): void {
           <option value="bestvideo[height<=480]+bestaudio/best">480p</option>
           <option value="bestaudio/best">Audio only</option>
         </select>
+        <label class="option-label">
+          <input id="playlist-subtitle-toggle" type="checkbox" class="subtitle-checkbox">
+          Download subtitles
+        </label>
         <button id="add-playlist-btn" class="btn-primary">Add Selected to Queue</button>
       </div>
     </div>`;
@@ -196,11 +164,12 @@ function renderPlaylistPreview(info: PlaylistInfo): void {
 
     if (selected.length === 0) { setError('No videos selected.'); return; }
 
-    const saveOpts = await showSaveModal('', false);
-    if (saveOpts === null) return;
+    const subtitles = (document.getElementById('playlist-subtitle-toggle') as HTMLInputElement).checked;
+    const folder = await pickFolder().catch(() => null);
+    if (!folder) return;
 
     try {
-      await addToQueue(selected.map(s => ({ ...s, output_dir: saveOpts.folder, download_subtitles: saveOpts.subtitles })));
+      await addToQueue(selected.map(s => ({ ...s, output_dir: folder, download_subtitles: subtitles })));
       previewSection.innerHTML = '';
       urlInput.value = '';
     } catch (e: unknown) {

@@ -128,7 +128,7 @@ function createToolView(cfg: ToolConfig, showError: (msg: string) => void): Tool
         <div class="playlist-entries">${rows}</div>
         <div class="playlist-footer convert-footer">
           <div class="convert-folder">
-            <span class="modal-hint">Save to</span>
+            <span class="hint">Save to</span>
             <input id="${cfg.prefix}-folder-display" type="text" class="folder-input folder-display" readonly value="${escapeHtml(outputDir ?? 'Same folder as original')}">
             <button id="${cfg.prefix}-folder-btn" class="btn-secondary">Browse…</button>
             ${outputDir ? `<button id="${cfg.prefix}-folder-reset" class="btn-ghost">Reset</button>` : ''}

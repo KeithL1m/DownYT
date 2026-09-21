@@ -508,46 +508,6 @@ body {
 }
 
 /* ── Folder Picker Modal ─────────────────────────────────── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  padding: 24px;
-}
-
-.modal-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px 28px 24px;
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.modal-desc {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: -8px;
-}
-
-.modal-input-row {
-  display: flex;
-  gap: 8px;
-}
-
 .folder-input {
   flex: 1;
   background: var(--surface-2);
@@ -565,26 +525,14 @@ body {
 .folder-input::placeholder { color: var(--text-muted); }
 .folder-input.folder-display { color: var(--text-muted); cursor: default; }
 
-.modal-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.modal-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.modal-hint {
+.hint {
   font-weight: 400;
   font-size: 11px;
   color: var(--text-muted);
   opacity: 0.7;
 }
 
-.modal-subtitle-label {
+.option-label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -601,13 +549,6 @@ body {
   height: 14px;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 4px;
 }
 
 .btn-secondary {

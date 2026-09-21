@@ -61,3 +61,19 @@ export async function addConversions(items: AddConversionPayload[]): Promise<{ a
   if (!res.ok) throw new Error(data.error || 'Failed to start conversion');
   return data as { added: string[] };
 }
+
+export interface SaveChoice {
+  cancelled: boolean;
+  folder: string | null;
+  filename: string | null;
+}
+
+/** Native Save As dialog: the user picks the folder and edits the file name together. */
+export async function pickSave(defaultName: string): Promise<SaveChoice> {
+  const res = await fetch('/api/pick-save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ default_name: defaultName }),
+  });
+  return res.json();
+}

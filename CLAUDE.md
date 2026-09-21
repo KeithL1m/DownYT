@@ -75,10 +75,8 @@ socket.io-client
 2. **Metadata fetch** — calls yt-dlp to get title, thumbnail URL, and list of available resolutions
 3. **Thumbnail preview** — displays the video thumbnail and title so user can confirm the correct video
 4. **Resolution picker** — dropdown of available formats (e.g. 1080p, 720p, 480p, 360p, audio-only)
-5. **Save options modal** — before adding to queue, user picks:
-   - **Folder** — "Browse…" button opens the native Windows folder picker (via `tkinter.filedialog`); defaults to `downloads/`
-   - **File name** — editable text field pre-filled with the video title; yt-dlp appends the correct extension automatically. Not shown for playlists (each video keeps its own title)
-   - **Download subtitles** — checkbox (unchecked by default); downloads all available subtitle languages as `.srt` files alongside the video
+5. **Save As dialog** — clicking "Add to Queue" immediately opens the native Windows Save As dialog (`/api/pick-save`, `tkinter.filedialog.asksaveasfilename`), pre-filled with the sanitised video title, so the user picks the folder and edits the file name in one step. yt-dlp appends the real extension (a media extension the user types is stripped). Cancelling adds nothing. The dialog reopens at the last folder used this session (kept in memory only). Playlists use the plain folder picker (`/api/pick-folder`) since each video keeps its own title
+   - **Download subtitles** — checkbox on the video card and on the playlist footer (unchecked by default); downloads all available subtitle languages as `.srt` files alongside the video
 6. **Download queue** — active downloads shown in a "Download Queue" section with a "Clear All" button
 7. **Background downloading** — `queue_manager.py` runs downloads on background threads so the UI stays responsive
 8. **Progress tracking** — per-item progress (%, download speed, ETA) pushed to the frontend via SocketIO
@@ -87,7 +85,7 @@ socket.io-client
 11. **Downloaded queue** — completed downloads move out of the Download Queue and into a separate "Downloaded" section automatically; has its own "Clear All" button
 12. **Open folder** — each card in the Downloaded section has a folder icon button that opens Windows Explorer at the file's location (calls `/api/open-folder` → `os.startfile`)
 13. **Playlist download** — user pastes a YouTube playlist URL; app fetches all video entries (title + thumbnail) and lists them; user can download the entire playlist at once or deselect individual videos before confirming; all selected videos are bulk-added to the existing download queue
-14. **Subtitle download** — when enabled in the save modal, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
+14. **Subtitle download** — when the subtitles checkbox is ticked, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
 15. **Retry failed downloads** — error cards in the active queue show a "Retry Download" button (red outline); clicking it removes the failed card and re-queues the same download with identical settings (URL, format, folder, filename, subtitle preference)
 16. **File converter** — the "Convert" tab converts images (png/jpg/webp/bmp/gif/tiff/ico), audio (mp3/wav/flac/m4a/ogg/opus) and video (mp4/mkv/webm/mov/gif, plus audio extraction) with per-file target format, optional output folder (default: next to the original). Progress is pushed on the `convert_update` SocketIO event. Originals are never overwritten (`name (1).ext`), and a failed conversion deletes its partial output
 17. **Background removal** — the "Remove Background" tab cuts the background out of images fully offline and saves a transparent PNG (`name_nobg.png`, next to the original by default). Same queue/progress/retry UI as the converter (jobs share `ConvertManager` with `operation: 'remove_bg'`), with image previews on a checkerboard so transparency is visible
@@ -101,6 +99,7 @@ socket.io-client
 | POST | `/api/queue` | Add one or more items to the download queue |
 | GET | `/api/queue` | Get current queue state |
 | POST | `/api/pick-folder` | Open native Windows folder picker (tkinter); returns `{cancelled, folder}` |
+| POST | `/api/pick-save` | Native Save As dialog; body `{default_name}`; returns `{cancelled, folder, filename}` (filename without extension) |
 | POST | `/api/pick-files` | Native multi-file picker (tkinter); body `{only_kind?: 'image'}`; returns supported files with `kind` + valid output `formats`, and a `skipped` count |
 | POST | `/api/convert` | Queue jobs: `{items: [{source, operation?: 'convert'\|'remove_bg', target_format, output_dir?}]}` (`remove_bg` always outputs png) |
 | GET | `/api/convert` | Get current job state (conversions and background removals) |
@@ -115,7 +114,6 @@ socket.io-client
 - **Typography:** Inter (or system-ui fallback); large weight for titles, regular for metadata, small/muted for secondary info
 - **Spacing:** Generous padding inside cards (14–28px); clear vertical rhythm between sections
 - **Borders & radius:** Rounded corners (`--radius: 10px`, `--radius-sm: 6px`) on cards and inputs
-- **Shadows:** Soft box-shadow on the save modal card
 
 ### Page Layout Order (top → bottom)
 
@@ -134,13 +132,10 @@ socket.io-client
 6. **Download Queue section** — heading row with "Download Queue" label and "Clear All" button; each item is a card with thumbnail, title, status badge, progress bar, speed/ETA; failed cards show a red-outlined "Retry Download" button on the right
 7. **Downloaded section** — heading row with "Downloaded" label and "Clear All" button; each completed item shows thumbnail, title, file path, full progress bar, and a folder icon button to open the file location in Explorer
 
-### Save Options Modal
+### Save flow (no modal)
 
-Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Queue" (playlist):
-- **Save to** — read-only path display + "Browse…" button (opens native folder picker); defaults to `downloads`
-- **File name** — editable input pre-filled with video title (single video only; hidden for playlists)
-- **Download subtitles** — checkbox (unchecked by default); label reads "Download subtitles (all available languages, .srt)"
-- **Cancel / Confirm** buttons
+- **Video card:** resolution picker, "Download subtitles" checkbox, "Add to Queue" → opens the Save As dialog (folder + file name together)
+- **Playlist footer:** resolution picker, "Download subtitles" checkbox, "Add Selected to Queue" → opens the folder picker
 
 ### UI Rules
 - The URL input must always be visible and accessible
