@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import { fetchVideoInfo, addToQueue } from './api';
 import { initQueue, updateQueueItem, clearActive, clearDownloaded } from './queue';
+import { initConvert } from './convert';
 import type { VideoInfo, PlaylistInfo, QueueItem } from './types';
 
 const socket = io();
@@ -17,6 +18,18 @@ const clearQueueBtn   = document.getElementById('clear-queue-btn')      as HTMLB
 const clearBtn        = document.getElementById('clear-downloaded-btn') as HTMLButtonElement;
 
 initQueue(queueContainer, downloadedContainer);
+initConvert(socket, (msg) => setError(msg));
+
+// ── Navigation between Download / Convert views ───────────────
+document.querySelectorAll<HTMLButtonElement>('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll<HTMLElement>('.view').forEach(v => {
+      v.style.display = v.id === `view-${tab.dataset.view}` ? '' : 'none';
+    });
+    setError('');
+  });
+});
 
 // Load existing queue on page load
 fetch('/api/queue')

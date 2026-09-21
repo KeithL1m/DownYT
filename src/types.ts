@@ -62,3 +62,33 @@ export interface AddToQueuePayload {
   custom_filename?: string;
   download_subtitles?: boolean;
 }
+
+export type ConvertKind = 'image' | 'audio' | 'video';
+
+export interface ConvertFile {
+  path: string;
+  name: string;
+  kind: ConvertKind;
+  formats: string[];
+}
+
+export type ConvertStatus = 'queued' | 'converting' | 'completed' | 'error';
+
+export interface ConvertJob {
+  id: string;
+  source: string;
+  title: string;
+  kind: ConvertKind;
+  target_format: string;
+  output_dir: string | null;
+  status: ConvertStatus;
+  progress: number;
+  filename: string | null;
+  error: string | null;
+}
+
+export interface AddConversionPayload {
+  source: string;
+  target_format: string;
+  output_dir?: string;
+}

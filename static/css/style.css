@@ -39,6 +39,9 @@ body {
   max-width: 860px;
   margin: 0 auto;
   padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
 }
 
 .logo {
@@ -646,3 +649,80 @@ body {
   .input-row { flex-direction: column; }
   .btn-primary { width: 100%; text-align: center; }
 }
+
+/* ── Navigation tabs ─────────────────────────────────────── */
+.nav { display: flex; gap: 4px; }
+
+.nav-tab {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-tab:hover { color: var(--text); background: var(--surface-2); }
+.nav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nav-tab.active { color: var(--text); background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--accent); }
+
+.view { display: flex; flex-direction: column; gap: 24px; }
+
+/* ── Convert view ────────────────────────────────────────── */
+.file-icon {
+  width: 41px;
+  height: 41px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--surface-2);
+}
+.file-icon.kind-image { color: #60a5fa; }
+.file-icon.kind-audio { color: #c084fc; }
+.file-icon.kind-video { color: #f472b6; }
+
+.convert-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+.convert-row:hover { background: var(--surface-2); }
+.convert-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.convert-arrow { color: var(--text-muted); }
+.convert-format { width: 100px; }
+.convert-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.convert-remove:hover { color: var(--error); background: var(--surface); }
+.convert-remove:focus-visible { outline: 2px solid var(--accent); }
+
+.convert-footer { flex-wrap: wrap; }
+.convert-folder { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.convert-folder .folder-input { flex: 1; min-width: 0; }
+
+.badge-converting { background: #332b00; color: var(--warning); }
+.queue-card.status-converting { border-color: #3b3b00; }

@@ -3,3 +3,4 @@ flask-socketio
 yt-dlp
 pywebview
 pythonnet
+pillow

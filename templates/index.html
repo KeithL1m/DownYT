@@ -17,10 +17,22 @@
         <span class="logo-icon">&#9660;</span>
         <span class="logo-text">DownYT</span>
       </div>
+      <nav class="nav">
+        <button class="nav-tab active" data-view="download">Download</button>
+        <button class="nav-tab" data-view="convert">Convert</button>
+      </nav>
     </div>
   </header>
 
   <main class="main">
+
+    <!-- Error Banner (shared by all views) -->
+    <div id="error-banner" class="error-banner" style="display:none">
+      <span id="error-text"></span>
+      <button id="error-dismiss" class="error-dismiss">&times;</button>
+    </div>
+
+  <div id="view-download" class="view">
 
     <!-- URL Input -->
     <section class="input-section">
@@ -37,12 +49,6 @@
         <button id="fetch-btn" class="btn-primary">Fetch</button>
       </div>
     </section>
-
-    <!-- Error Banner -->
-    <div id="error-banner" class="error-banner" style="display:none">
-      <span id="error-text"></span>
-      <button id="error-dismiss" class="error-dismiss">&times;</button>
-    </div>
 
     <!-- Preview / Playlist Panel -->
     <section id="preview-section" class="preview-section"></section>
@@ -64,6 +70,37 @@
       </div>
       <div id="downloaded-container" class="queue-container"></div>
     </section>
+
+  </div>
+
+  <div id="view-convert" class="view" style="display:none">
+
+    <section class="input-section">
+      <p class="input-label">Convert images, audio and video files to another format</p>
+      <div class="input-row">
+        <button id="convert-choose-btn" class="btn-primary">Choose files…</button>
+      </div>
+    </section>
+
+    <section id="convert-selection" class="preview-section"></section>
+
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Conversion Queue</h3>
+        <button id="convert-clear-active" class="btn-clear">Clear All</button>
+      </div>
+      <div id="convert-active" class="queue-container"></div>
+    </section>
+
+    <section class="queue-section">
+      <div class="queue-heading-row">
+        <h3 class="queue-heading">Converted</h3>
+        <button id="convert-clear-done" class="btn-clear">Clear All</button>
+      </div>
+      <div id="convert-done" class="queue-container"></div>
+    </section>
+
+  </div>
 
   </main>
 

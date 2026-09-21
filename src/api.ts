@@ -1,4 +1,4 @@
-import type { FetchResult, AddToQueuePayload } from './types';
+import type { FetchResult, AddToQueuePayload, ConvertFile, AddConversionPayload } from './types';
 
 export async function fetchVideoInfo(url: string): Promise<FetchResult> {
   const res = await fetch('/api/fetch', {
@@ -31,5 +31,29 @@ export async function addToQueue(items: AddToQueuePayload[]): Promise<{ added: s
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to add to queue');
+  return data as { added: string[] };
+}
+
+export async function pickFiles(): Promise<{ files: ConvertFile[]; skipped: number }> {
+  const res = await fetch('/api/pick-files', { method: 'POST' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to open file picker');
+  return data;
+}
+
+export async function pickFolder(): Promise<string | null> {
+  const res = await fetch('/api/pick-folder', { method: 'POST' });
+  const data = await res.json();
+  return data.cancelled ? null : data.folder;
+}
+
+export async function addConversions(items: AddConversionPayload[]): Promise<{ added: string[] }> {
+  const res = await fetch('/api/convert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to start conversion');
   return data as { added: string[] };
 }

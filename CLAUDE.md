@@ -13,6 +13,7 @@ DownYT — a YouTube downloader web app. Users paste a YouTube link, see the vid
 - **Frontend:** TypeScript (vanilla — no React/Vue) compiled via Vite
 - **Real-time updates:** Flask-SocketIO (backend) + socket.io-client (frontend TypeScript package)
 - **Build tool:** Vite — compiles `src/*.ts` → `static/js/`, no framework required
+- **File conversion:** Pillow (images) + the bundled ffmpeg (audio/video) via `converter.py`
 - **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Bundled into the PyInstaller build (`_internal/ffmpeg/`) so the app runs on PCs without ffmpeg; `downyt.spec` copies it from `vendor/ffmpeg/ffmpeg.exe` if present, else from PATH, and fails the build if neither exists. The binary is gitignored; `build.bat` runs `setup_ffmpeg.ps1` to download the latest gyan.dev build into `vendor/ffmpeg/` when it's missing (run it manually on a fresh clone before running from source)
 
 ## File Structure
@@ -26,10 +27,14 @@ DownYT/
 ├── vite.config.ts            # Vite build config (output → static/js/)
 ├── app.py                    # Flask entry point — routes and SocketIO events
 ├── downloader.py             # yt-dlp wrapper: fetch_info(), start_download()
-├── queue_manager.py          # Queue logic — threading, status tracking per item
+├── queue_manager.py          # QueueManager (downloads) + ConvertManager (conversions) — threading, status tracking per item
+├── converter.py              # File converter: format tables, Pillow image path, ffmpeg audio/video path with progress
+├── main.py                   # Desktop entry point (pywebview window around the Flask server)
+├── downyt.spec / build.bat   # PyInstaller onedir build; setup_ffmpeg.ps1 fetches ffmpeg into vendor/ffmpeg/
 ├── src/
 │   ├── main.ts               # Frontend entry point
 │   ├── queue.ts              # Queue UI logic and SocketIO event handling
+│   ├── convert.ts            # Convert tab: file selection, format pickers, conversion queue UI
 │   ├── types.ts              # Shared TypeScript interfaces (VideoInfo, QueueItem, etc.)
 │   └── api.ts                # fetch() wrappers for Flask API routes
 ├── static/
@@ -49,6 +54,9 @@ DownYT/
 flask
 flask-socketio
 yt-dlp
+pywebview
+pythonnet
+pillow
 ```
 
 **package.json (Node)**
@@ -78,6 +86,7 @@ socket.io-client
 13. **Playlist download** — user pastes a YouTube playlist URL; app fetches all video entries (title + thumbnail) and lists them; user can download the entire playlist at once or deselect individual videos before confirming; all selected videos are bulk-added to the existing download queue
 14. **Subtitle download** — when enabled in the save modal, yt-dlp writes `.srt` subtitle files (`writesubtitles`, `writeautomaticsub`, `subtitlesformat: srt`); video and subtitles are placed together in a dedicated subfolder named after the video title (e.g. `downloads/My Video/My Video.mp4` + `My Video.en.srt`)
 15. **Retry failed downloads** — error cards in the active queue show a "Retry Download" button (red outline); clicking it removes the failed card and re-queues the same download with identical settings (URL, format, folder, filename, subtitle preference)
+16. **File converter** — the "Convert" tab converts images (png/jpg/webp/bmp/gif/tiff/ico), audio (mp3/wav/flac/m4a/ogg/opus) and video (mp4/mkv/webm/mov/gif, plus audio extraction) with per-file target format, optional output folder (default: next to the original). Progress is pushed on the `convert_update` SocketIO event. Originals are never overwritten (`name (1).ext`), and a failed conversion deletes its partial output
 
 ## API Routes
 
@@ -88,6 +97,9 @@ socket.io-client
 | POST | `/api/queue` | Add one or more items to the download queue |
 | GET | `/api/queue` | Get current queue state |
 | POST | `/api/pick-folder` | Open native Windows folder picker (tkinter); returns `{cancelled, folder}` |
+| POST | `/api/pick-files` | Native multi-file picker (tkinter); returns supported files with `kind` + valid output `formats`, and a `skipped` count |
+| POST | `/api/convert` | Queue conversions: `{items: [{source, target_format, output_dir?}]}` |
+| GET | `/api/convert` | Get current conversion state |
 | POST | `/api/open-folder` | Open Windows Explorer at a given file path (os.startfile) |
 
 ## UI Layout & Design
@@ -147,3 +159,5 @@ Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Que
 - When `download_subtitles=True`, the `outtmpl` is changed to place files in a subfolder: `{output_dir}/{title}/{title}.%(ext)s`; without subtitles files go directly into `output_dir`
 - `QueueItem` carries `output_dir`, `custom_filename`, and `download_subtitles` so the frontend has everything needed to retry a failed download without re-showing the save modal
 - Retry button style: red outline (`.btn-retry`), error card right side only; on click it removes the failed item from `activeItems` client-side then calls `addToQueue` — the new job arrives via SocketIO like any other
+- Conversions live in `converter.py` (pure functions) and `ConvertManager`; ffmpeg progress comes from `-progress pipe:1` plus the duration parsed from `ffmpeg -i`, so `ffprobe` is not needed. Run ffmpeg with `stdin=DEVNULL` and `CREATE_NO_WINDOW` (windowed app)
+- Building the frontend needs Node (`npm run build`) — `static/js/main.js` is committed build output, so rebuild it after any `src/*.ts` change

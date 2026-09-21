@@ -3,7 +3,8 @@ import sys
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 from downloader import fetch_info
-from queue_manager import QueueManager
+from queue_manager import QueueManager, ConvertManager
+from converter import inspect_file, IMAGE_EXTS, AUDIO_EXTS, VIDEO_EXTS
 
 # When frozen by PyInstaller, resources live in sys._MEIPASS;
 # user-writable data (downloads) lives next to the .exe.
@@ -26,6 +27,7 @@ app.config['SECRET_KEY'] = 'downyt-secret-key'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 queue_manager = QueueManager(socketio)
+convert_manager = ConvertManager(socketio)
 
 
 @app.route('/')
@@ -77,6 +79,52 @@ def pick_folder():
     if not folder:
         return jsonify({'cancelled': True, 'folder': None})
     return jsonify({'cancelled': False, 'folder': folder})
+
+
+@app.route('/api/pick-files', methods=['POST'])
+def pick_files():
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+
+    def patterns(exts):
+        return ' '.join(f'*{e}' for e in sorted(exts))
+
+    paths = filedialog.askopenfilenames(
+        title='Choose files to convert',
+        filetypes=[
+            ('Supported files', patterns(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)),
+            ('Images', patterns(IMAGE_EXTS)),
+            ('Audio', patterns(AUDIO_EXTS)),
+            ('Video', patterns(VIDEO_EXTS)),
+        ],
+    )
+    root.destroy()
+    files = [inspect_file(os.path.normpath(p)) for p in paths]
+    return jsonify({
+        'files': [f for f in files if f],
+        'skipped': sum(1 for f in files if f is None),
+    })
+
+
+@app.route('/api/convert', methods=['POST'])
+def add_conversions():
+    data = request.get_json()
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'error': 'No files provided'}), 400
+    for item in items:
+        if not item.get('source') or not item.get('target_format'):
+            return jsonify({'error': 'Each item needs a source file and target format'}), 400
+    added = [convert_manager.add(item) for item in items]
+    return jsonify({'added': added})
+
+
+@app.route('/api/convert', methods=['GET'])
+def get_conversions():
+    return jsonify(convert_manager.get_all())
 
 
 @app.route('/api/open-folder', methods=['POST'])
