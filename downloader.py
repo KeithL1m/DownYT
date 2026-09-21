@@ -1,16 +1,17 @@
 import glob
 import os
 import shutil
+import sys
 import yt_dlp
 
-_FALLBACK_FFMPEG_LOCATION = r'C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin'
-
-
-def _resolve_ffmpeg_location() -> str:
+def _resolve_ffmpeg_location():
+    """Directory containing ffmpeg: the bundled copy first, then PATH."""
+    if getattr(sys, 'frozen', False):
+        bundled = os.path.join(sys._MEIPASS, 'ffmpeg')
+        if os.path.isfile(os.path.join(bundled, 'ffmpeg.exe')):
+            return bundled
     ffmpeg_path = shutil.which('ffmpeg')
-    if ffmpeg_path:
-        return os.path.dirname(ffmpeg_path)
-    return _FALLBACK_FFMPEG_LOCATION
+    return os.path.dirname(ffmpeg_path) if ffmpeg_path else None
 
 
 def fetch_info(url: str) -> dict:

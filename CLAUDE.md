@@ -13,7 +13,7 @@ DownYT — a YouTube downloader web app. Users paste a YouTube link, see the vid
 - **Frontend:** TypeScript (vanilla — no React/Vue) compiled via Vite
 - **Real-time updates:** Flask-SocketIO (backend) + socket.io-client (frontend TypeScript package)
 - **Build tool:** Vite — compiles `src/*.ts` → `static/js/`, no framework required
-- **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Located automatically via `shutil.which('ffmpeg')` on PATH, falling back to a hardcoded WinGet path if not found
+- **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Bundled into the PyInstaller build (`_internal/ffmpeg/`) so the app runs on PCs without ffmpeg; `downyt.spec` copies it from `vendor/ffmpeg/ffmpeg.exe` if present, else from PATH, and fails the build if neither exists
 
 ## File Structure
 
@@ -141,7 +141,7 @@ Shown when the user clicks "Add to Queue" (single video) or "Add Selected to Que
 - `downloads/` directory is created automatically on startup (`os.makedirs('downloads', exist_ok=True)`)
 - Do not store any user data or download history persistently — everything is in-memory per session
 - Video format IDs must always be `{format_id}+bestaudio/best` for video formats (set in `_format_video`); audio-only formats use the raw format_id
-- ffmpeg path is resolved in `download_video()` via `_resolve_ffmpeg_location()`, which uses `shutil.which('ffmpeg')` and only falls back to a hardcoded path if ffmpeg isn't found on PATH
+- ffmpeg path is resolved in `download_video()` via `_resolve_ffmpeg_location()`, which uses the bundled copy when frozen, then `shutil.which('ffmpeg')` on PATH (dev runs); any new feature needing ffmpeg (e.g. the file converter) must use this same resolver
 - On download failure, `queue_manager.py` calls `cleanup_partial_files()` in `downloader.py` to delete yt-dlp's leftover `.part`/`.ytdl` fragment files for that job; retrying a failed download therefore re-downloads from scratch rather than resuming
 - Output format is always mp4 (`merge_output_format: mp4` in yt-dlp options)
 - When `download_subtitles=True`, the `outtmpl` is changed to place files in a subfolder: `{output_dir}/{title}/{title}.%(ext)s`; without subtitles files go directly into `output_dir`

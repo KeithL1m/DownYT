@@ -1,4 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import shutil
+
+# Bundle ffmpeg so the app runs on PCs without it installed. Prefer a copy in
+# vendor/ffmpeg/ (drop ffmpeg.exe there to pin a version), else use PATH.
+_ffmpeg = os.path.join('vendor', 'ffmpeg', 'ffmpeg.exe')
+if not os.path.isfile(_ffmpeg):
+    _ffmpeg = shutil.which('ffmpeg')
+if not _ffmpeg:
+    raise SystemExit('ffmpeg.exe not found: put it in vendor/ffmpeg/ or on PATH before building.')
 
 a = Analysis(
     ['main.py'],
@@ -7,6 +17,7 @@ a = Analysis(
     datas=[
         ('templates', 'templates'),
         ('static', 'static'),
+        (_ffmpeg, 'ffmpeg'),
     ],
     hiddenimports=[
         'engineio.async_drivers.threading',
@@ -46,7 +57,6 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
-    upx_exclude=[],
+    upx=False,
     name='DownYT',
 )
