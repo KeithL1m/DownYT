@@ -163,3 +163,13 @@ socket.io-client
 - Building the frontend needs Node (`npm run build`) — `static/js/main.js` is committed build output, so rebuild it after any `src/*.ts` change
 - Output filenames for conversions/cutouts are reserved atomically (`unique_path` creates the file with mode `x`), because jobs run concurrently; failed jobs delete the reserved file
 - Requirements for a full build: Python deps, Node (frontend), plus `vendor/ffmpeg/ffmpeg.exe` and `vendor/models/u2net.onnx` (both auto-downloaded by `build.bat`)
+
+## Roadmap / Before Public Release
+
+DownYT is currently a personal-use, portable app: copy the whole `dist\DownYT\` folder to run it on another PC. **An installer is needed before it is distributed for public use** (deliberately deferred; the owner is fine with the current state). When that work starts, cover:
+
+- **Installer** (e.g. Inno Setup): per-user install (avoids the Program Files write problem; the app already falls back to `~/Downloads/DownYT` and `%LOCALAPPDATA%\DownYT` if its folder is read-only), Start Menu/Desktop shortcuts, uninstaller, and the Microsoft WebView2 runtime bootstrapper (needed by the pywebview window; built into Windows 11 and most updated Windows 10)
+- **Code signing** and exe version info (company/product/version) — the exe is currently unsigned, so other PCs may show SmartScreen "unknown publisher" warnings or antivirus false positives
+- **yt-dlp updates** — it is frozen at build time and YouTube changes break old versions; plan periodic rebuilds or an in-app "update yt-dlp" button
+- **Fully offline UI** — the page loads the Inter font from Google Fonts (falls back to the system font offline); bundle it locally
+- **ffmpeg licensing** — the bundled gyan.dev/GPL build carries GPL obligations when distributed publicly
