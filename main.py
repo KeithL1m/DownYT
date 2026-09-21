@@ -12,6 +12,7 @@ if getattr(sys, 'frozen', False):
     if sys.stderr is None:
         sys.stderr = open(os.devnull, 'w')
 
+import html
 import socket
 import threading
 import time
@@ -39,6 +40,26 @@ def _find_free_port() -> int:
         return s.getsockname()[1]
 
 
+_error_log_path = None
+
+
+def _write_error_log(text: str) -> None:
+    """Save a crash report next to the app, or under %LOCALAPPDATA%\\DownYT when the
+    app folder isn't writable (e.g. installed in Program Files)."""
+    global _error_log_path
+    fallback = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'DownYT')
+    for folder in (_app_dir(), fallback):
+        try:
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, 'error.log')
+            with open(path, 'w') as f:
+                f.write(text)
+            _error_log_path = path
+            return
+        except OSError:
+            continue
+
+
 def _start_flask(port: int) -> None:
     try:
         from app import socketio, app
@@ -46,8 +67,7 @@ def _start_flask(port: int) -> None:
         # dev server is appropriate here, not an actual production deployment.
         socketio.run(app, host='127.0.0.1', port=port, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
     except Exception:
-        with open(os.path.join(_app_dir(), 'error.log'), 'w') as f:
-            f.write(traceback.format_exc())
+        _write_error_log(traceback.format_exc())
         raise
 
 
@@ -71,10 +91,15 @@ if __name__ == '__main__':
             time.sleep(0.25)
 
     url = f'http://127.0.0.1:{port}' if server_ready else None
+    time.sleep(0.2)  # let the crashed thread finish writing its log
+    failure_html = (
+        '<h2 style="font-family:sans-serif;padding:2em">DownYT failed to start.<br>'
+        '<small style="font-weight:normal">Details: ' + html.escape(_error_log_path or 'error.log') + '</small></h2>'
+    )
     webview.create_window(
         'DownYT',
         url,
-        html=None if server_ready else '<h2 style="font-family:sans-serif;padding:2em">DownYT failed to start. Check error.log next to the app, or restart it.</h2>',
+        html=None if server_ready else failure_html,
         width=1100,
         height=750,
         resizable=True,

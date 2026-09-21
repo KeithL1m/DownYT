@@ -16,8 +16,24 @@ else:
     _RES_DIR = os.path.dirname(os.path.abspath(__file__))
     _APP_DIR = _RES_DIR
 
-DOWNLOADS_DIR = os.path.join(_APP_DIR, 'downloads')
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+def _pick_downloads_dir() -> str:
+    """Default download folder: next to the app when that's writable (portable use),
+    otherwise the user's Downloads folder, e.g. when installed under Program Files."""
+    for candidate in (os.path.join(_APP_DIR, 'downloads'),
+                      os.path.join(os.path.expanduser('~'), 'Downloads', 'DownYT')):
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            probe = os.path.join(candidate, '.write_test')
+            with open(probe, 'w'):
+                pass
+            os.remove(probe)
+            return candidate
+        except OSError:
+            continue
+    return os.path.join(_APP_DIR, 'downloads')  # nothing writable: jobs will report the error
+
+
+DOWNLOADS_DIR = _pick_downloads_dir()
 
 app = Flask(
     __name__,
@@ -58,8 +74,12 @@ def add_to_queue():
     for item in items:
         d = item.get('output_dir', 'downloads')
         if not os.path.isabs(d):
-            item['output_dir'] = os.path.join(_APP_DIR, d)
-    added = [queue_manager.add(item) for item in items]
+            item['output_dir'] = DOWNLOADS_DIR if d == 'downloads' else os.path.join(_APP_DIR, d)
+    try:
+        added = [queue_manager.add(item) for item in items]
+    except OSError as e:
+        # e.g. a folder the user can't write to (chosen in the Save As dialog)
+        return jsonify({'error': f'Cannot use that folder: {e.strerror or e}'}), 400
     return jsonify({'added': added})
 
 

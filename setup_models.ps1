@@ -15,9 +15,20 @@ $url = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx
 New-Item -ItemType Directory -Force $Dest | Out-Null
 $tmp = "$model.download"
 try {
-    Write-Host 'Downloading background removal model (about 176 MB)...'
-    Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
-    if ((Get-Item $tmp).Length -lt 100MB) { throw 'Downloaded model looks truncated.' }
+    $ok = $false
+    foreach ($attempt in 1..3) {
+        try {
+            Write-Host "Downloading background removal model (about 176 MB), attempt $attempt..."
+            Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+            if ((Get-Item $tmp).Length -lt 100MB) { throw 'Downloaded model looks truncated.' }
+            $ok = $true
+            break
+        } catch {
+            Write-Host "  failed: $($_.Exception.Message)"
+            Start-Sleep -Seconds 2
+        }
+    }
+    if (-not $ok) { throw 'Could not download the background removal model.' }
     Move-Item $tmp $model
     Write-Host "Installed: $model"
 } finally {
