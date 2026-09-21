@@ -13,7 +13,7 @@ DownYT — a YouTube downloader web app. Users paste a YouTube link, see the vid
 - **Frontend:** TypeScript (vanilla — no React/Vue) compiled via Vite
 - **Real-time updates:** Flask-SocketIO (backend) + socket.io-client (frontend TypeScript package)
 - **Build tool:** Vite — compiles `src/*.ts` → `static/js/`, no framework required
-- **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Bundled into the PyInstaller build (`_internal/ffmpeg/`) so the app runs on PCs without ffmpeg; `downyt.spec` copies it from `vendor/ffmpeg/ffmpeg.exe` if present, else from PATH, and fails the build if neither exists
+- **Stream merging:** ffmpeg — required to merge video+audio streams into mp4. Bundled into the PyInstaller build (`_internal/ffmpeg/`) so the app runs on PCs without ffmpeg; `downyt.spec` copies it from `vendor/ffmpeg/ffmpeg.exe` if present, else from PATH, and fails the build if neither exists. The binary is gitignored; `build.bat` runs `setup_ffmpeg.ps1` to download the latest gyan.dev build into `vendor/ffmpeg/` when it's missing (run it manually on a fresh clone before running from source)
 
 ## File Structure
 

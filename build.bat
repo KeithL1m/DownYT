@@ -1,4 +1,13 @@
 @echo off
+if not exist vendor\ffmpeg\ffmpeg.exe (
+    echo ffmpeg not found in vendor\ffmpeg, downloading...
+    powershell -NoProfile -ExecutionPolicy Bypass -File setup_ffmpeg.ps1
+    if errorlevel 1 (
+        echo Could not download ffmpeg. Put ffmpeg.exe in vendor\ffmpeg manually.
+        pause
+        exit /b 1
+    )
+)
 echo Building DownYT...
 pyinstaller downyt.spec --clean --noconfirm
 echo.
