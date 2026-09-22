@@ -75,7 +75,7 @@ socket.io-client
 2. **Metadata fetch** — calls yt-dlp to get title, thumbnail URL, and list of available resolutions
 3. **Thumbnail preview** — displays the video thumbnail and title so user can confirm the correct video
 4. **Resolution picker** — dropdown of available formats (e.g. 1080p, 720p, 480p, 360p, audio-only)
-5. **Save As dialog** — clicking "Add to Queue" immediately opens the native Windows Save As dialog (`/api/pick-save`, `tkinter.filedialog.asksaveasfilename`), pre-filled with the sanitised video title, so the user picks the folder and edits the file name in one step. yt-dlp appends the real extension (a media extension the user types is stripped). Cancelling adds nothing. The dialog reopens at the last folder used this session (kept in memory only). Playlists use the plain folder picker (`/api/pick-folder`) since each video keeps its own title
+5. **Save As dialog** — clicking "Add to Queue" immediately opens the native Windows Save As dialog (`/api/pick-save`, `tkinter.filedialog.asksaveasfilename`), pre-filled with the sanitised video title, so the user picks the folder and edits the file name in one step. yt-dlp appends the real extension (a media extension the user types is stripped). Cancelling adds nothing. The dialog reopens at the last folder used, saved across app restarts (see Coding Conventions). Playlists use the plain folder picker (`/api/pick-folder`) since each video keeps its own title
    - **Download subtitles** — checkbox on the video card and on the playlist footer (unchecked by default); downloads all available subtitle languages as `.srt` files alongside the video
 6. **Download queue** — active downloads shown in a "Download Queue" section with a "Clear All" button
 7. **Background downloading** — `queue_manager.py` runs downloads on background threads so the UI stays responsive
@@ -151,7 +151,7 @@ socket.io-client
 - Keep route handlers in `app.py` thin — business logic lives in `downloader.py` and `queue_manager.py`
 - All yt-dlp interactions go through `downloader.py` only (never call yt-dlp directly from routes)
 - `downloads/` directory is created automatically on startup (`os.makedirs('downloads', exist_ok=True)`)
-- Do not store any user data or download history persistently — everything is in-memory per session
+- Do not store any user data or download history persistently — everything is in-memory per session. The one deliberate exception: the last folder used in a Save As/folder-picker dialog is saved to `%LOCALAPPDATA%\DownYT\settings.json` (`_last_dir`/`_load_last_dir`/`_save_last_dir` in `app.py`) so repeat downloads reopen there even across app restarts — it's a single UI preference, not download history or content, and writing it is always best-effort (never fails a request)
 - Video format IDs must always be `{format_id}+bestaudio/best` for video formats (set in `_format_video`); audio-only formats use the raw format_id
 - ffmpeg path is resolved in `download_video()` via `_resolve_ffmpeg_location()`, which uses the bundled copy when frozen, then `shutil.which('ffmpeg')` on PATH (dev runs); any new feature needing ffmpeg (e.g. the file converter) must use this same resolver
 - On download failure, `queue_manager.py` calls `cleanup_partial_files()` in `downloader.py` to delete yt-dlp's leftover `.part`/`.ytdl` fragment files for that job; retrying a failed download therefore re-downloads from scratch rather than resuming

@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sys
@@ -88,15 +89,41 @@ def get_queue():
     return jsonify(queue_manager.get_all())
 
 
-# Remembered for this session only (nothing is persisted), so repeat downloads
-# reopen the dialogs where the last one ended.
-_last_dir = DOWNLOADS_DIR
+# The last folder used in the Save As / folder-picker dialogs, so repeat downloads
+# reopen where the last one ended. This is the one deliberate exception to "no
+# persistent storage": just a single folder path, not download history or content.
+_SETTINGS_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'DownYT')
+_SETTINGS_FILE = os.path.join(_SETTINGS_DIR, 'settings.json')
+
+
+def _load_last_dir() -> str:
+    try:
+        with open(_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            folder = json.load(f).get('last_dir')
+        if folder and os.path.isdir(folder):
+            return folder
+    except (OSError, ValueError):
+        pass
+    return DOWNLOADS_DIR
+
+
+def _save_last_dir(folder: str) -> None:
+    try:
+        os.makedirs(_SETTINGS_DIR, exist_ok=True)
+        with open(_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'last_dir': folder}, f)
+    except OSError:
+        pass  # best-effort: an unwritable settings location just means no persistence
+
+
+_last_dir = _load_last_dir()
 
 
 def _remember_dir(folder: str) -> None:
     global _last_dir
     if folder and os.path.isdir(folder):
         _last_dir = folder
+        _save_last_dir(folder)
 
 
 def _start_dir(requested) -> str:
